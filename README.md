@@ -1,0 +1,1 @@
+# API para gerenciamento de finanças pessoais
