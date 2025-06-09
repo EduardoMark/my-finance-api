@@ -10,6 +10,7 @@ import (
 type Repository interface {
 	Create(ctx context.Context, arg db.CreateUserParams) error
 	GetUser(ctx context.Context, id pgtype.UUID) (*db.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*db.User, error)
 	GetAllUser(ctx context.Context) ([]db.User, error)
 	Update(ctx context.Context, arg db.UpdateUserParams) error
 	Delete(ctx context.Context, id pgtype.UUID) error
@@ -31,6 +32,15 @@ func (r *userRepository) Create(ctx context.Context, arg db.CreateUserParams) er
 
 func (r *userRepository) GetUser(ctx context.Context, id pgtype.UUID) (*db.User, error) {
 	user, err := r.db.GetUser(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*db.User, error) {
+	user, err := r.db.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}

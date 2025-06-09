@@ -5,19 +5,26 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/EduardoMark/my-finance-api/pkg/hash"
 	httpresponse "github.com/EduardoMark/my-finance-api/pkg/httpResponse"
+	"github.com/EduardoMark/my-finance-api/pkg/token"
 	"github.com/go-chi/chi/v5"
 )
 
 type UserHandler struct {
-	svc Service
+	svc   Service
+	token *token.TokenManager
 }
 
-func NewUserHandler(svc Service) *UserHandler {
-	return &UserHandler{svc: svc}
+func NewUserHandler(svc Service, token *token.TokenManager) *UserHandler {
+	return &UserHandler{
+		svc:   svc,
+		token: token,
+	}
 }
 
 func (h *UserHandler) RegisterRoutes(r chi.Router) {
+	r.Post("/users/login", h.Login)
 	r.Post("/users/signup", h.Signup)
 	r.Get("/users/{id}", h.GetUser)
 	r.Get("/users", h.GetAllUser)
@@ -25,18 +32,50 @@ func (h *UserHandler) RegisterRoutes(r chi.Router) {
 	r.Delete("/users/{id}", h.Delete)
 }
 
+func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var body UserLoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "error when decoding body:"+err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	record, err := h.svc.GetUserByEmail(ctx, body.Email)
+	if err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, "invalid credentials")
+		return
+	}
+
+	if err := hash.ComparePassword(body.Password, record.Password); err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, "invalid credentials")
+		return
+	}
+
+	token, err := h.token.GenerateToken(record.Name, record.Email)
+	if err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, "error on generate token:"+err.Error())
+		return
+	}
+
+	resp := UserLoginResponse{Token: token}
+
+	httpresponse.SendJSON(w, http.StatusOK, resp)
+}
+
 func (h *UserHandler) Signup(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var body UserCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "error when decoding body:"+err.Error(), http.StatusBadRequest)
+		httpresponse.Error(w, http.StatusBadRequest, "error when decoding body:"+err.Error())
 		return
 	}
 	defer r.Body.Close()
 
 	if err := h.svc.Create(ctx, body); err != nil {
-		http.Error(w, "error on create user: "+err.Error(), http.StatusInternalServerError)
+		httpresponse.Error(w, http.StatusInternalServerError, "error on create user: "+err.Error())
 		return
 	}
 

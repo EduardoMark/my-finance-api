@@ -17,6 +17,7 @@ import (
 type Service interface {
 	Create(ctx context.Context, dto UserCreateRequest) error
 	GetUser(ctx context.Context, id string) (*db.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*db.User, error)
 	GetAllUsers(ctx context.Context) ([]db.User, error)
 	Update(ctx context.Context, id string, arg UserUpdateRequest) error
 	Delete(ctx context.Context, id string) error
@@ -67,6 +68,18 @@ func (s *userService) GetUser(ctx context.Context, id string) (*db.User, error) 
 	pgUUID := pgtype.UUID{Bytes: idUUID, Valid: true}
 
 	record, err := s.repo.GetUser(ctx, pgUUID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New(ErrUserNotFound.Error())
+		}
+		return nil, fmt.Errorf("error on search user: %w", err)
+	}
+
+	return record, nil
+}
+
+func (s *userService) GetUserByEmail(ctx context.Context, email string) (*db.User, error) {
+	record, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New(ErrUserNotFound.Error())

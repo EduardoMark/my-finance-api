@@ -8,6 +8,14 @@ type UserCreateRequest struct {
 	Password string `json:"password" validate:"required"`
 }
 
+type UserLoginRequest struct {
+	Email    string `json:"email" validate:"required"`
+	Password string `json:"password" validate:"required"`
+}
+
+type UserLoginResponse struct {
+	Token string `json:"token"`
+}
 type UserUpdateRequest struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`

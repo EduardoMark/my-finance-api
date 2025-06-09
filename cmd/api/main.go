@@ -10,6 +10,7 @@ import (
 	"github.com/EduardoMark/my-finance-api/internal/user"
 	"github.com/EduardoMark/my-finance-api/pkg/config"
 	"github.com/EduardoMark/my-finance-api/pkg/database"
+	"github.com/EduardoMark/my-finance-api/pkg/token"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -28,9 +29,11 @@ func main() {
 
 	db := db.New(dbPool)
 
+	token := token.NewTokenManager(*cfg)
+
 	userRepo := user.NewUserRepository(db)
 	userSvc := user.NewUserService(userRepo)
-	userHandler := user.NewUserHandler(userSvc)
+	userHandler := user.NewUserHandler(userSvc, token)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
