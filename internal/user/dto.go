@@ -1,10 +1,6 @@
 package user
 
-import (
-	"database/sql"
-
-	"github.com/google/uuid"
-)
+import "github.com/jackc/pgx/v5/pgtype"
 
 type UserCreateRequest struct {
 	Name     string `json:"name" validate:"required"`
@@ -19,9 +15,9 @@ type UserUpdateRequest struct {
 }
 
 type UserResponse struct {
-	ID        uuid.UUID    `json:"id"`
-	Name      string       `json:"name"`
-	Email     string       `json:"email"`
-	CreatedAt sql.NullTime `json:"created_at"`
-	UpdatedAt sql.NullTime `json:"updated_at"`
+	ID        pgtype.UUID        `json:"id"`
+	Name      string             `json:"name"`
+	Email     string             `json:"email"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }

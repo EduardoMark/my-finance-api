@@ -20,13 +20,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dbInstance, err := database.ConnectDatabase(cfg)
+	dbPool, err := database.ConnectDatabase(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer dbInstance.Close()
+	defer dbPool.Close()
 
-	db := db.New(dbInstance)
+	db := db.New(dbPool)
 
 	userRepo := user.NewUserRepository(db)
 	userSvc := user.NewUserService(userRepo)

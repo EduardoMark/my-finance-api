@@ -5,16 +5,14 @@
 package db
 
 import (
-	"database/sql"
-
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type User struct {
-	ID        uuid.UUID
+	ID        pgtype.UUID
 	Name      string
 	Email     string
 	Password  string
-	CreatedAt sql.NullTime
-	UpdatedAt sql.NullTime
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/EduardoMark/my-finance-api/pkg/hash"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Service interface {
@@ -49,8 +50,8 @@ func (s *userService) Create(ctx context.Context, dto UserCreateRequest) error {
 		Name:      dto.Name,
 		Email:     dto.Email,
 		Password:  password,
-		CreatedAt: sql.NullTime{Time: now, Valid: true},
-		UpdatedAt: sql.NullTime{Time: now, Valid: true},
+		CreatedAt: pgtype.Timestamptz{Time: now, Valid: true},
+		UpdatedAt: pgtype.Timestamptz{Time: now, Valid: true},
 	}
 
 	if err := s.repo.Create(ctx, user); err != nil {
@@ -62,12 +63,10 @@ func (s *userService) Create(ctx context.Context, dto UserCreateRequest) error {
 }
 
 func (s *userService) GetUser(ctx context.Context, id string) (*db.User, error) {
-	idUUID, err := uuid.Parse(id)
-	if err != nil {
-		return nil, fmt.Errorf("error on parse id to uuid: %w", err)
-	}
+	idUUID := uuid.MustParse(id)
+	pgUUID := pgtype.UUID{Bytes: idUUID, Valid: true}
 
-	record, err := s.repo.GetUser(ctx, idUUID)
+	record, err := s.repo.GetUser(ctx, pgUUID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New(ErrUserNotFound.Error())
@@ -90,12 +89,10 @@ func (s *userService) GetAllUsers(ctx context.Context) ([]db.User, error) {
 }
 
 func (s *userService) Update(ctx context.Context, id string, arg UserUpdateRequest) error {
-	idUUID, err := uuid.Parse(id)
-	if err != nil {
-		return fmt.Errorf("error parsing id to UUID: %w", err)
-	}
+	idUUID := uuid.MustParse(id)
+	pgUUID := pgtype.UUID{Bytes: idUUID, Valid: true}
 
-	record, err := s.repo.GetUser(ctx, idUUID)
+	record, err := s.repo.GetUser(ctx, pgUUID)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
 			return errors.New("user not found")
@@ -105,11 +102,11 @@ func (s *userService) Update(ctx context.Context, id string, arg UserUpdateReque
 
 	now := time.Now()
 	updatedParams := db.UpdateUserParams{
-		ID:        idUUID,
+		ID:        pgtype.UUID{Bytes: idUUID, Valid: true},
 		Name:      record.Name,
 		Email:     record.Email,
 		Password:  record.Password,
-		UpdatedAt: sql.NullTime{Time: now, Valid: true},
+		UpdatedAt: pgtype.Timestamptz{Time: now, Valid: true},
 	}
 
 	if arg.Name != "" {
@@ -136,12 +133,10 @@ func (s *userService) Update(ctx context.Context, id string, arg UserUpdateReque
 }
 
 func (s *userService) Delete(ctx context.Context, id string) error {
-	idUUID, err := uuid.Parse(id)
-	if err != nil {
-		return fmt.Errorf("error on parse id to uuid: %w", err)
-	}
+	idUUID := uuid.MustParse(id)
+	pgUUID := pgtype.UUID{Bytes: idUUID, Valid: true}
 
-	if err := s.repo.Delete(ctx, idUUID); err != nil {
+	if err := s.repo.Delete(ctx, pgUUID); err != nil {
 		return fmt.Errorf("error on delete user: %w", err)
 	}
 

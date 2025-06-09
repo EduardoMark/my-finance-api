@@ -33,6 +33,7 @@ func (h *UserHandler) Signup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error when decoding body:"+err.Error(), http.StatusBadRequest)
 		return
 	}
+	defer r.Body.Close()
 
 	if err := h.svc.Create(ctx, body); err != nil {
 		http.Error(w, "error on create user: "+err.Error(), http.StatusInternalServerError)
@@ -102,6 +103,7 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 		httpresponse.Error(w, http.StatusBadRequest, "invalid body")
 		return
 	}
+	defer r.Body.Close()
 
 	if err := h.svc.Update(ctx, id, body); err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "error when updating user: "+err.Error())

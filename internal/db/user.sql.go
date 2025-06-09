@@ -7,9 +7,8 @@ package db
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :exec
@@ -20,12 +19,12 @@ type CreateUserParams struct {
 	Name      string
 	Email     string
 	Password  string
-	CreatedAt sql.NullTime
-	UpdatedAt sql.NullTime
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.ExecContext(ctx, createUser,
+	_, err := q.db.Exec(ctx, createUser,
 		arg.Name,
 		arg.Email,
 		arg.Password,
@@ -39,8 +38,8 @@ const deleteUser = `-- name: DeleteUser :exec
 DELETE FROM users WHERE id = $1
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteUser, id)
+func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUser, id)
 	return err
 }
 
@@ -49,7 +48,7 @@ SELECT id, name, email, password, created_at, updated_at FROM users
 `
 
 func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, getAllUsers)
+	rows, err := q.db.Query(ctx, getAllUsers)
 	if err != nil {
 		return nil, err
 	}
@@ -69,9 +68,6 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -82,8 +78,8 @@ const getUser = `-- name: GetUser :one
 SELECT id, name, email, password, created_at, updated_at FROM users WHERE id = $1
 `
 
-func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUser, id)
+func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, getUser, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -101,7 +97,7 @@ SELECT id, name, email, password, created_at, updated_at FROM users WHERE email 
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -119,15 +115,15 @@ UPDATE users SET name=$2, email=$3, password=$4, updated_at=$5 WHERE id=$1
 `
 
 type UpdateUserParams struct {
-	ID        uuid.UUID
+	ID        pgtype.UUID
 	Name      string
 	Email     string
 	Password  string
-	UpdatedAt sql.NullTime
+	UpdatedAt pgtype.Timestamptz
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
-	_, err := q.db.ExecContext(ctx, updateUser,
+	_, err := q.db.Exec(ctx, updateUser,
 		arg.ID,
 		arg.Name,
 		arg.Email,
