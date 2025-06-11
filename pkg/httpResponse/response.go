@@ -1,4 +1,4 @@
-package httpresponse
+package httpResponse
 
 import (
 	"encoding/json"
@@ -23,4 +23,8 @@ func Error(w http.ResponseWriter, status int, message string) {
 
 func NoContent(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func Unauthorized(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusUnauthorized)
 }

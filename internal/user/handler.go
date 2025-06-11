@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/EduardoMark/my-finance-api/pkg/hash"
-	httpresponse "github.com/EduardoMark/my-finance-api/pkg/httpResponse"
+	"github.com/EduardoMark/my-finance-api/pkg/httpResponse"
 	"github.com/EduardoMark/my-finance-api/pkg/token"
 	"github.com/go-chi/chi/v5"
 )
@@ -37,31 +37,31 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	var body UserLoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, "error when decoding body:"+err.Error())
+		httpResponse.Error(w, http.StatusBadRequest, "error when decoding body:"+err.Error())
 		return
 	}
 	defer r.Body.Close()
 
 	record, err := h.svc.GetUserByEmail(ctx, body.Email)
 	if err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, "invalid credentials")
+		httpResponse.Error(w, http.StatusInternalServerError, "invalid credentials")
 		return
 	}
 
 	if err := hash.ComparePassword(body.Password, record.Password); err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, "invalid credentials")
+		httpResponse.Error(w, http.StatusInternalServerError, "invalid credentials")
 		return
 	}
 
 	token, err := h.token.GenerateToken(record.Name, record.Email)
 	if err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, "error on generate token:"+err.Error())
+		httpResponse.Error(w, http.StatusInternalServerError, "error on generate token:"+err.Error())
 		return
 	}
 
 	resp := UserLoginResponse{Token: token}
 
-	httpresponse.SendJSON(w, http.StatusOK, resp)
+	httpResponse.SendJSON(w, http.StatusOK, resp)
 }
 
 func (h *UserHandler) Signup(w http.ResponseWriter, r *http.Request) {
@@ -69,17 +69,17 @@ func (h *UserHandler) Signup(w http.ResponseWriter, r *http.Request) {
 
 	var body UserCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, "error when decoding body:"+err.Error())
+		httpResponse.Error(w, http.StatusBadRequest, "error when decoding body:"+err.Error())
 		return
 	}
 	defer r.Body.Close()
 
 	if err := h.svc.Create(ctx, body); err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, "error on create user: "+err.Error())
+		httpResponse.Error(w, http.StatusInternalServerError, "error on create user: "+err.Error())
 		return
 	}
 
-	httpresponse.Created(w)
+	httpResponse.Created(w)
 }
 
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
@@ -89,11 +89,11 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	record, err := h.svc.GetUser(ctx, id)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			httpresponse.Error(w, http.StatusNotFound, "user not found")
+			httpResponse.Error(w, http.StatusNotFound, "user not found")
 			return
 		}
 
-		httpresponse.Error(w, http.StatusInternalServerError, err.Error())
+		httpResponse.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -105,7 +105,7 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt: record.UpdatedAt,
 	}
 
-	httpresponse.SendJSON(w, http.StatusOK, response)
+	httpResponse.SendJSON(w, http.StatusOK, response)
 }
 
 func (h *UserHandler) GetAllUser(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +114,7 @@ func (h *UserHandler) GetAllUser(w http.ResponseWriter, r *http.Request) {
 	records, err := h.svc.GetAllUsers(ctx)
 	if err != nil {
 		if errors.Is(err, ErrNoUsersFound) {
-			httpresponse.Error(w, http.StatusNotFound, "no users found")
+			httpResponse.Error(w, http.StatusNotFound, "no users found")
 			return
 		}
 	}
@@ -130,7 +130,7 @@ func (h *UserHandler) GetAllUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	httpresponse.SendJSON(w, http.StatusOK, response)
+	httpResponse.SendJSON(w, http.StatusOK, response)
 }
 
 func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -139,17 +139,17 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	var body UserUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, "invalid body")
+		httpResponse.Error(w, http.StatusBadRequest, "invalid body")
 		return
 	}
 	defer r.Body.Close()
 
 	if err := h.svc.Update(ctx, id, body); err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, "error when updating user: "+err.Error())
+		httpResponse.Error(w, http.StatusInternalServerError, "error when updating user: "+err.Error())
 		return
 	}
 
-	httpresponse.NoContent(w)
+	httpResponse.NoContent(w)
 }
 
 func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -157,9 +157,9 @@ func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	if err := h.svc.Delete(ctx, id); err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, err.Error())
+		httpResponse.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	httpresponse.NoContent(w)
+	httpResponse.NoContent(w)
 }

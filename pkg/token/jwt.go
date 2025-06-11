@@ -1,12 +1,19 @@
 package token
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/EduardoMark/my-finance-api/pkg/config"
 	"github.com/golang-jwt/jwt/v5"
 )
+
+type Claims struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	jwt.RegisteredClaims
+}
 
 type TokenManager struct {
 	secret string
@@ -17,12 +24,15 @@ func NewTokenManager(cfg config.Env) *TokenManager {
 }
 
 func (s *TokenManager) GenerateToken(name, email string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
-		jwt.MapClaims{
-			"name":  name,
-			"email": email,
-			"exp":   time.Now().Add(time.Hour * 1).Unix(),
-		})
+	claims := Claims{
+		Name:  name,
+		Email: email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	tokenStr, err := token.SignedString([]byte(s.secret))
 	if err != nil {
@@ -32,17 +42,23 @@ func (s *TokenManager) GenerateToken(name, email string) (string, error) {
 	return tokenStr, nil
 }
 
-func (s *TokenManager) VerifyToken(tokenStr string) error {
-	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-		return s.secret, nil
+func (s *TokenManager) VerifyToken(tokenStr string) (*Claims, error) {
+	claims := &Claims{}
+
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(s.secret), nil
 	})
+
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !token.Valid {
-		return fmt.Errorf("invalid token")
+		return nil, errors.New("invalid token")
 	}
 
-	return nil
+	return claims, nil
 }
