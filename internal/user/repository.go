@@ -3,7 +3,7 @@ package user
 import (
 	"context"
 
-	"github.com/EduardoMark/my-finance-api/internal/db"
+	"github.com/EduardoMark/my-finance-api/internal/store/pgstore/db"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 

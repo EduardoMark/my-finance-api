@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/EduardoMark/my-finance-api/internal/db"
+	"github.com/EduardoMark/my-finance-api/internal/store/pgstore/db"
 	"github.com/EduardoMark/my-finance-api/pkg/hash"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"

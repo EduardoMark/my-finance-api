@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/EduardoMark/my-finance-api/internal/db"
+	"github.com/EduardoMark/my-finance-api/internal/store/pgstore/db"
 	"github.com/EduardoMark/my-finance-api/internal/user"
 	"github.com/EduardoMark/my-finance-api/pkg/config"
 	"github.com/EduardoMark/my-finance-api/pkg/database"

@@ -16,11 +16,11 @@ INSERT INTO users (name, email, password, created_at, updated_at) VALUES ($1, $2
 `
 
 type CreateUserParams struct {
-	Name      string
-	Email     string
-	Password  string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	Name      string             `json:"name"`
+	Email     string             `json:"email"`
+	Password  string             `json:"password"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
@@ -115,11 +115,11 @@ UPDATE users SET name=$2, email=$3, password=$4, updated_at=$5 WHERE id=$1
 `
 
 type UpdateUserParams struct {
-	ID        pgtype.UUID
-	Name      string
-	Email     string
-	Password  string
-	UpdatedAt pgtype.Timestamptz
+	ID        pgtype.UUID        `json:"id"`
+	Name      string             `json:"name"`
+	Email     string             `json:"email"`
+	Password  string             `json:"password"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
