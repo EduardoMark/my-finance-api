@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/EduardoMark/my-finance-api/pkg/hash"
+	"github.com/EduardoMark/my-finance-api/internal/middlewares"
 	"github.com/EduardoMark/my-finance-api/pkg/httpResponse"
 	"github.com/EduardoMark/my-finance-api/pkg/token"
 	"github.com/go-chi/chi/v5"
@@ -26,10 +26,15 @@ func NewUserHandler(svc Service, token *token.TokenManager) *UserHandler {
 func (h *UserHandler) RegisterRoutes(r chi.Router) {
 	r.Post("/users/login", h.Login)
 	r.Post("/users/signup", h.Signup)
-	r.Get("/users/{id}", h.GetUser)
-	r.Get("/users", h.GetAllUser)
-	r.Put("/users/{id}", h.Update)
-	r.Delete("/users/{id}", h.Delete)
+
+	r.Route("/users", func(r chi.Router) {
+		r.Use(middlewares.AuthMiddleware(h.token))
+
+		r.Get("/{id}", h.GetUser)
+		r.Get("/", h.GetAllUser)
+		r.Put("/{id}", h.Update)
+		r.Delete("/{id}", h.Delete)
+	})
 }
 
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -42,20 +47,9 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	record, err := h.svc.GetUserByEmail(ctx, body.Email)
+	token, err := h.svc.Login(ctx, h.token, body)
 	if err != nil {
-		httpResponse.Error(w, http.StatusInternalServerError, "invalid credentials")
-		return
-	}
-
-	if err := hash.ComparePassword(body.Password, record.Password); err != nil {
-		httpResponse.Error(w, http.StatusInternalServerError, "invalid credentials")
-		return
-	}
-
-	token, err := h.token.GenerateToken(record.Name, record.Email)
-	if err != nil {
-		httpResponse.Error(w, http.StatusInternalServerError, "error on generate token:"+err.Error())
+		httpResponse.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
 

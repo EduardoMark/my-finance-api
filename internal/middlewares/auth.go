@@ -32,8 +32,8 @@ func AuthMiddleware(jwtManager *token.TokenManager) func(http.Handler) http.Hand
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), "name", claims.Name)
-			ctx = context.WithValue(ctx, "email", claims.Email)
+			ctx := context.WithValue(r.Context(), "user_id", claims.UserID)
+			ctx = context.WithValue(r.Context(), "name", claims.Name)
 			ctx = context.WithValue(ctx, "exp", claims.ExpiresAt)
 
 			r = r.WithContext(ctx)

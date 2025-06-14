@@ -10,8 +10,8 @@ import (
 )
 
 type Claims struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	UserID string `json:"user_id"`
+	Name   string `json:"name"`
 	jwt.RegisteredClaims
 }
 
@@ -23,10 +23,10 @@ func NewTokenManager(cfg config.Env) *TokenManager {
 	return &TokenManager{secret: cfg.JWTSecret}
 }
 
-func (s *TokenManager) GenerateToken(name, email string) (string, error) {
+func (s *TokenManager) GenerateToken(userID, name string) (string, error) {
 	claims := Claims{
-		Name:  name,
-		Email: email,
+		UserID: userID,
+		Name:   name,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 		},

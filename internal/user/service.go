@@ -9,6 +9,7 @@ import (
 
 	"github.com/EduardoMark/my-finance-api/internal/store/pgstore/db"
 	"github.com/EduardoMark/my-finance-api/pkg/hash"
+	"github.com/EduardoMark/my-finance-api/pkg/token"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -21,6 +22,7 @@ type Service interface {
 	GetAllUsers(ctx context.Context) ([]db.User, error)
 	Update(ctx context.Context, id string, arg UserUpdateRequest) error
 	Delete(ctx context.Context, id string) error
+	Login(ctx context.Context, tm *token.TokenManager, dto UserLoginRequest) (string, error)
 }
 
 type userService struct {
@@ -154,4 +156,25 @@ func (s *userService) Delete(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+func (s *userService) Login(ctx context.Context, tm *token.TokenManager, dto UserLoginRequest) (string, error) {
+	record, err := s.repo.GetUserByEmail(ctx, dto.Email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", errors.New("invalid credentials")
+		}
+		return "", fmt.Errorf("error on search user: %w", err)
+	}
+
+	if err := hash.ComparePassword(dto.Password, record.Password); err != nil {
+		return "", errors.New("invalid credentials")
+	}
+
+	token, err := tm.GenerateToken(record.ID.String(), record.Name)
+	if err != nil {
+		return "", err
+	}
+
+	return token, err
 }
