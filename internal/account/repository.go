@@ -7,7 +7,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type Repository interface{}
+type Repository interface {
+	Create(ctx context.Context, args db.CreateAccountParams) error
+	GetAccount(ctx context.Context, id pgtype.UUID) (*db.Account, error)
+	GetAccountByUserID(ctx context.Context, userID pgtype.UUID) ([]db.Account, error)
+	UpdateAccount(ctx context.Context, args db.UpdateAccountParams) error
+	UpdateAccountBalance(ctx context.Context, args db.UpdateAccountBalanceParams) (pgtype.Float8, error)
+	Delete(ctx context.Context, id pgtype.UUID) error
+}
 
 type accountRepository struct {
 	db *db.Queries
@@ -50,10 +57,10 @@ func (r *accountRepository) UpdateAccount(ctx context.Context, args db.UpdateAcc
 	return nil
 }
 
-func (r *accountRepository) UpdateAccountBalance(ctx context.Context, args db.UpdateAccountBalanceParams) (pgtype.Numeric, error) {
+func (r *accountRepository) UpdateAccountBalance(ctx context.Context, args db.UpdateAccountBalanceParams) (pgtype.Float8, error) {
 	balance, err := r.db.UpdateAccountBalance(ctx, args)
 	if err != nil {
-		return pgtype.Numeric{}, err
+		return pgtype.Float8{}, err
 	}
 	return balance, nil
 }

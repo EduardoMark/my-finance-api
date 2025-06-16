@@ -22,10 +22,10 @@ RETURNING id, user_id, name, type, balance, created_at, updated_at
 `
 
 type CreateAccountParams struct {
-	UserID  pgtype.UUID    `json:"user_id"`
-	Name    string         `json:"name"`
-	Type    string         `json:"type"`
-	Balance pgtype.Numeric `json:"balance"`
+	UserID  pgtype.UUID   `json:"user_id"`
+	Name    string        `json:"name"`
+	Type    string        `json:"type"`
+	Balance pgtype.Float8 `json:"balance"`
 }
 
 func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
@@ -118,10 +118,10 @@ WHERE id = $1
 `
 
 type UpdateAccountParams struct {
-	ID      pgtype.UUID    `json:"id"`
-	Name    string         `json:"name"`
-	Type    string         `json:"type"`
-	Balance pgtype.Numeric `json:"balance"`
+	ID      pgtype.UUID   `json:"id"`
+	Name    string        `json:"name"`
+	Type    string        `json:"type"`
+	Balance pgtype.Float8 `json:"balance"`
 }
 
 func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) error {
@@ -143,13 +143,13 @@ RETURNING balance
 `
 
 type UpdateAccountBalanceParams struct {
-	ID      pgtype.UUID    `json:"id"`
-	Balance pgtype.Numeric `json:"balance"`
+	ID      pgtype.UUID   `json:"id"`
+	Balance pgtype.Float8 `json:"balance"`
 }
 
-func (q *Queries) UpdateAccountBalance(ctx context.Context, arg UpdateAccountBalanceParams) (pgtype.Numeric, error) {
+func (q *Queries) UpdateAccountBalance(ctx context.Context, arg UpdateAccountBalanceParams) (pgtype.Float8, error) {
 	row := q.db.QueryRow(ctx, updateAccountBalance, arg.ID, arg.Balance)
-	var balance pgtype.Numeric
+	var balance pgtype.Float8
 	err := row.Scan(&balance)
 	return balance, err
 }

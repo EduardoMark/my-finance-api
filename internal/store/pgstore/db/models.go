@@ -13,7 +13,7 @@ type Account struct {
 	UserID    pgtype.UUID        `json:"user_id"`
 	Name      string             `json:"name"`
 	Type      string             `json:"type"`
-	Balance   pgtype.Numeric     `json:"balance"`
+	Balance   pgtype.Float8      `json:"balance"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
