@@ -9,7 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type Claims struct {
+type claims struct {
 	UserID string `json:"user_id"`
 	Name   string `json:"name"`
 	jwt.RegisteredClaims
@@ -24,7 +24,7 @@ func NewTokenManager(cfg config.Env) *TokenManager {
 }
 
 func (s *TokenManager) GenerateToken(userID, name string) (string, error) {
-	claims := Claims{
+	claims := claims{
 		UserID: userID,
 		Name:   name,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -42,8 +42,8 @@ func (s *TokenManager) GenerateToken(userID, name string) (string, error) {
 	return tokenStr, nil
 }
 
-func (s *TokenManager) VerifyToken(tokenStr string) (*Claims, error) {
-	claims := &Claims{}
+func (s *TokenManager) VerifyToken(tokenStr string) (*claims, error) {
+	claims := &claims{}
 
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
