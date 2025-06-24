@@ -28,3 +28,7 @@ func NoContent(w http.ResponseWriter) {
 func Unauthorized(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusUnauthorized)
 }
+
+func NotFound(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusNotFound)
+}

@@ -112,25 +112,18 @@ const updateAccount = `-- name: UpdateAccount :exec
 UPDATE accounts
 SET name = $2,
     type = $3,
-    balance = $4,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 `
 
 type UpdateAccountParams struct {
-	ID      pgtype.UUID   `json:"id"`
-	Name    string        `json:"name"`
-	Type    string        `json:"type"`
-	Balance pgtype.Float8 `json:"balance"`
+	ID   pgtype.UUID `json:"id"`
+	Name string      `json:"name"`
+	Type string      `json:"type"`
 }
 
 func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) error {
-	_, err := q.db.Exec(ctx, updateAccount,
-		arg.ID,
-		arg.Name,
-		arg.Type,
-		arg.Balance,
-	)
+	_, err := q.db.Exec(ctx, updateAccount, arg.ID, arg.Name, arg.Type)
 	return err
 }
 
