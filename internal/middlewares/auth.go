@@ -9,6 +9,14 @@ import (
 	"github.com/EduardoMark/my-finance-api/pkg/token"
 )
 
+type contextKey string
+
+const (
+	ContextUserID contextKey = "user_id"
+	ContextName   contextKey = "name"
+	ContextExp    contextKey = "exp"
+)
+
 func AuthMiddleware(jwtManager *token.TokenManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -32,9 +40,9 @@ func AuthMiddleware(jwtManager *token.TokenManager) func(http.Handler) http.Hand
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), "user_id", claims.UserID)
-			ctx = context.WithValue(r.Context(), "name", claims.Name)
-			ctx = context.WithValue(ctx, "exp", claims.ExpiresAt)
+			ctx := context.WithValue(r.Context(), ContextUserID, claims.UserID)
+			ctx = context.WithValue(ctx, ContextName, claims.Name)
+			ctx = context.WithValue(ctx, ContextExp, claims.ExpiresAt)
 
 			r = r.WithContext(ctx)
 

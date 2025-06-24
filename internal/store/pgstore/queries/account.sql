@@ -17,7 +17,6 @@ SELECT * FROM accounts WHERE user_id = $1;
 UPDATE accounts
 SET name = $2,
     type = $3,
-    balance = $4,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1;
 

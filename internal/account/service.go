@@ -2,6 +2,7 @@ package account
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -14,6 +15,11 @@ import (
 
 type Service interface {
 	Create(ctx context.Context, userID string, dto AccountCreateRequest) error
+	GetAccount(ctx context.Context, id string) (*db.Account, error)
+	GetAllAccountsByUserID(ctx context.Context, userID string) ([]db.Account, error)
+	UpdateAccount(ctx context.Context, id string, args UpdateAccountReq) error
+	UpdateBalance(ctx context.Context, id string, newBalance float64) (*float64, error)
+	Delete(ctx context.Context, id string) error
 }
 
 type accountService struct {
@@ -54,6 +60,113 @@ func (s *accountService) Create(ctx context.Context, userID string, dto AccountC
 
 	if err := s.repo.Create(ctx, params); err != nil {
 		return fmt.Errorf("error on creating account: %w", err)
+	}
+
+	return nil
+}
+
+func (s *accountService) GetAccount(ctx context.Context, id string) (*db.Account, error) {
+	idUUID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
+	record, err := s.repo.GetAccount(ctx, pgtype.UUID{Bytes: idUUID, Valid: true})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrAccountNotFound
+		}
+		return nil, err
+	}
+
+	return record, nil
+}
+
+func (s *accountService) GetAllAccountsByUserID(ctx context.Context, userID string) ([]db.Account, error) {
+	idUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	records, err := s.repo.GetAccountByUserID(ctx, pgtype.UUID{Bytes: idUUID, Valid: true})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNoAccountsFound
+		}
+		return nil, err
+	}
+
+	return records, nil
+}
+
+func (s *accountService) UpdateAccount(ctx context.Context, id string, args UpdateAccountReq) error {
+	idUUID, err := uuid.Parse(id)
+	if err != nil {
+		return err
+	}
+
+	record, err := s.repo.GetAccount(ctx, pgtype.UUID{Bytes: idUUID, Valid: true})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows); err != nil {
+			return ErrAccountNotFound
+		}
+		return err
+	}
+
+	updateParams := db.UpdateAccountParams{
+		ID:   record.ID,
+		Name: record.Name,
+		Type: record.Type,
+	}
+
+	if args.Name != "" {
+		updateParams.Name = args.Name
+	}
+
+	if args.Type != "" {
+		updateParams.Type = args.Type
+	}
+
+	if err := s.repo.UpdateAccount(ctx, updateParams); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *accountService) UpdateBalance(ctx context.Context, id string, value float64) (*float64, error) {
+	idUUID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
+	acc, err := s.repo.GetAccount(ctx, pgtype.UUID{Bytes: idUUID, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+
+	newBalance := acc.Balance.Float64 + value
+
+	record, err := s.repo.UpdateAccountBalance(ctx, db.UpdateAccountBalanceParams{
+		ID:      pgtype.UUID{Bytes: idUUID, Valid: true},
+		Balance: pgtype.Float8{Float64: newBalance, Valid: true},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &record.Float64, nil
+}
+
+func (s *accountService) Delete(ctx context.Context, id string) error {
+	idUUID, err := uuid.Parse(id)
+	if err != nil {
+		return err
+	}
+
+	if err := s.repo.Delete(ctx, pgtype.UUID{Bytes: idUUID, Valid: true}); err != nil {
+		return err
 	}
 
 	return nil
