@@ -8,51 +8,41 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createAccount = `-- name: CreateAccount :one
+const createAccount = `-- name: CreateAccount :exec
 INSERT INTO accounts (
   user_id,
   name,
   type,
   balance
 ) VALUES ($1, $2, $3, $4)
-RETURNING id, user_id, name, type, balance, created_at, updated_at
 `
 
 type CreateAccountParams struct {
-	UserID  pgtype.UUID   `json:"user_id"`
+	UserID  uuid.UUID     `json:"user_id"`
 	Name    string        `json:"name"`
 	Type    string        `json:"type"`
 	Balance pgtype.Float8 `json:"balance"`
 }
 
-func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
-	row := q.db.QueryRow(ctx, createAccount,
+func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) error {
+	_, err := q.db.Exec(ctx, createAccount,
 		arg.UserID,
 		arg.Name,
 		arg.Type,
 		arg.Balance,
 	)
-	var i Account
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Name,
-		&i.Type,
-		&i.Balance,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+	return err
 }
 
 const deleteAccount = `-- name: DeleteAccount :exec
 DELETE FROM accounts WHERE id = $1
 `
 
-func (q *Queries) DeleteAccount(ctx context.Context, id pgtype.UUID) error {
+func (q *Queries) DeleteAccount(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteAccount, id)
 	return err
 }
@@ -61,7 +51,7 @@ const getAccount = `-- name: GetAccount :one
 SELECT id, user_id, name, type, balance, created_at, updated_at FROM accounts WHERE id = $1
 `
 
-func (q *Queries) GetAccount(ctx context.Context, id pgtype.UUID) (Account, error) {
+func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (*Account, error) {
 	row := q.db.QueryRow(ctx, getAccount, id)
 	var i Account
 	err := row.Scan(
@@ -73,20 +63,20 @@ func (q *Queries) GetAccount(ctx context.Context, id pgtype.UUID) (Account, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
 const getAccountsByUserId = `-- name: GetAccountsByUserId :many
 SELECT id, user_id, name, type, balance, created_at, updated_at FROM accounts WHERE user_id = $1
 `
 
-func (q *Queries) GetAccountsByUserId(ctx context.Context, userID pgtype.UUID) ([]Account, error) {
+func (q *Queries) GetAccountsByUserId(ctx context.Context, userID uuid.UUID) ([]*Account, error) {
 	rows, err := q.db.Query(ctx, getAccountsByUserId, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Account
+	var items []*Account
 	for rows.Next() {
 		var i Account
 		if err := rows.Scan(
@@ -100,7 +90,7 @@ func (q *Queries) GetAccountsByUserId(ctx context.Context, userID pgtype.UUID) (
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -117,32 +107,12 @@ WHERE id = $1
 `
 
 type UpdateAccountParams struct {
-	ID   pgtype.UUID `json:"id"`
-	Name string      `json:"name"`
-	Type string      `json:"type"`
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+	Type string    `json:"type"`
 }
 
 func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) error {
 	_, err := q.db.Exec(ctx, updateAccount, arg.ID, arg.Name, arg.Type)
 	return err
-}
-
-const updateAccountBalance = `-- name: UpdateAccountBalance :one
-UPDATE accounts
-SET balance = $2,
-    updated_at = CURRENT_TIMESTAMP
-WHERE id = $1
-RETURNING balance
-`
-
-type UpdateAccountBalanceParams struct {
-	ID      pgtype.UUID   `json:"id"`
-	Balance pgtype.Float8 `json:"balance"`
-}
-
-func (q *Queries) UpdateAccountBalance(ctx context.Context, arg UpdateAccountBalanceParams) (pgtype.Float8, error) {
-	row := q.db.QueryRow(ctx, updateAccountBalance, arg.ID, arg.Balance)
-	var balance pgtype.Float8
-	err := row.Scan(&balance)
-	return balance, err
 }

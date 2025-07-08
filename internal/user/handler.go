@@ -92,7 +92,7 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := UserResponse{
-		ID:        record.ID,
+		ID:        record.ID.String(),
 		Name:      record.Name,
 		Email:     record.Email,
 		CreatedAt: record.CreatedAt,
@@ -116,7 +116,7 @@ func (h *UserHandler) GetAllUser(w http.ResponseWriter, r *http.Request) {
 	response := make([]UserResponse, len(records))
 	for i, record := range records {
 		response[i] = UserResponse{
-			ID:        record.ID,
+			ID:        record.ID.String(),
 			Name:      record.Name,
 			Email:     record.Email,
 			CreatedAt: record.CreatedAt,

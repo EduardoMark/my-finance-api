@@ -30,7 +30,6 @@ func (h *AccountHandler) RegisterAccountRoutes(r chi.Router) {
 		r.Get("/{id}", h.GetAccount)
 		r.Get("/", h.GetAllAccountsPerUser)
 		r.Post("/{id}", h.Update)
-		r.Post("/balance/{id}", h.UpdateAccountBalance)
 		r.Delete("/{id}", h.Delete)
 	})
 }
@@ -148,26 +147,6 @@ func (h *AccountHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpResponse.NoContent(w)
-}
-
-func (h *AccountHandler) UpdateAccountBalance(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	id := chi.URLParam(r, "id")
-
-	var body UpdateAccountBalanceReq
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httpResponse.Error(w, http.StatusBadRequest, "invalid body")
-		return
-	}
-
-	record, err := h.svc.UpdateBalance(ctx, id, body.Balance)
-	if err != nil {
-		httpResponse.Error(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	response := UpdateAccountBalanceRes{Balance: *record}
-	httpResponse.SendJSON(w, http.StatusOK, response)
 }
 
 func (h *AccountHandler) Delete(w http.ResponseWriter, r *http.Request) {

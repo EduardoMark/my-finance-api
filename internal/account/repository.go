@@ -4,16 +4,15 @@ import (
 	"context"
 
 	"github.com/EduardoMark/my-finance-api/internal/store/pgstore/db"
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/google/uuid"
 )
 
 type Repository interface {
 	Create(ctx context.Context, args db.CreateAccountParams) error
-	GetAccount(ctx context.Context, id pgtype.UUID) (*db.Account, error)
-	GetAccountByUserID(ctx context.Context, userID pgtype.UUID) ([]db.Account, error)
+	GetAccount(ctx context.Context, id uuid.UUID) (*db.Account, error)
+	GetAccountByUserID(ctx context.Context, userID uuid.UUID) ([]*db.Account, error)
 	UpdateAccount(ctx context.Context, args db.UpdateAccountParams) error
-	UpdateAccountBalance(ctx context.Context, args db.UpdateAccountBalanceParams) (pgtype.Float8, error)
-	Delete(ctx context.Context, id pgtype.UUID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type accountRepository struct {
@@ -25,7 +24,7 @@ func NewAccountRepo(db *db.Queries) Repository {
 }
 
 func (r *accountRepository) Create(ctx context.Context, args db.CreateAccountParams) error {
-	_, err := r.db.CreateAccount(ctx, args)
+	err := r.db.CreateAccount(ctx, args)
 	if err != nil {
 		return err
 	}
@@ -33,16 +32,16 @@ func (r *accountRepository) Create(ctx context.Context, args db.CreateAccountPar
 	return nil
 }
 
-func (r *accountRepository) GetAccount(ctx context.Context, id pgtype.UUID) (*db.Account, error) {
+func (r *accountRepository) GetAccount(ctx context.Context, id uuid.UUID) (*db.Account, error) {
 	record, err := r.db.GetAccount(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return &record, nil
+	return record, nil
 }
 
-func (r *accountRepository) GetAccountByUserID(ctx context.Context, userID pgtype.UUID) ([]db.Account, error) {
+func (r *accountRepository) GetAccountByUserID(ctx context.Context, userID uuid.UUID) ([]*db.Account, error) {
 	records, err := r.db.GetAccountsByUserId(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -57,15 +56,7 @@ func (r *accountRepository) UpdateAccount(ctx context.Context, args db.UpdateAcc
 	return nil
 }
 
-func (r *accountRepository) UpdateAccountBalance(ctx context.Context, args db.UpdateAccountBalanceParams) (pgtype.Float8, error) {
-	balance, err := r.db.UpdateAccountBalance(ctx, args)
-	if err != nil {
-		return pgtype.Float8{}, err
-	}
-	return balance, nil
-}
-
-func (r *accountRepository) Delete(ctx context.Context, id pgtype.UUID) error {
+func (r *accountRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	if err := r.db.DeleteAccount(ctx, id); err != nil {
 		return err
 	}

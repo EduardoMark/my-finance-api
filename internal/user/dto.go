@@ -1,6 +1,8 @@
 package user
 
-import "github.com/jackc/pgx/v5/pgtype"
+import (
+	"github.com/jackc/pgx/v5/pgtype"
+)
 
 type UserCreateRequest struct {
 	Name     string `json:"name" validate:"required"`
@@ -23,7 +25,7 @@ type UserUpdateRequest struct {
 }
 
 type UserResponse struct {
-	ID        pgtype.UUID        `json:"id"`
+	ID        string             `json:"id"`
 	Name      string             `json:"name"`
 	Email     string             `json:"email"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`

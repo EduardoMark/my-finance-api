@@ -19,7 +19,7 @@ type Service interface {
 	Create(ctx context.Context, dto UserCreateRequest) error
 	GetUser(ctx context.Context, id string) (*db.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*db.User, error)
-	GetAllUsers(ctx context.Context) ([]db.User, error)
+	GetAllUsers(ctx context.Context) ([]*db.User, error)
 	Update(ctx context.Context, id string, arg UserUpdateRequest) error
 	Delete(ctx context.Context, id string) error
 	Login(ctx context.Context, tm *token.TokenManager, dto UserLoginRequest) (string, error)
@@ -67,9 +67,8 @@ func (s *userService) Create(ctx context.Context, dto UserCreateRequest) error {
 
 func (s *userService) GetUser(ctx context.Context, id string) (*db.User, error) {
 	idUUID := uuid.MustParse(id)
-	pgUUID := pgtype.UUID{Bytes: idUUID, Valid: true}
 
-	record, err := s.repo.GetUser(ctx, pgUUID)
+	record, err := s.repo.GetUser(ctx, idUUID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New(ErrUserNotFound.Error())
@@ -92,7 +91,7 @@ func (s *userService) GetUserByEmail(ctx context.Context, email string) (*db.Use
 	return record, nil
 }
 
-func (s *userService) GetAllUsers(ctx context.Context) ([]db.User, error) {
+func (s *userService) GetAllUsers(ctx context.Context) ([]*db.User, error) {
 	records, err := s.repo.GetAllUser(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -105,9 +104,8 @@ func (s *userService) GetAllUsers(ctx context.Context) ([]db.User, error) {
 
 func (s *userService) Update(ctx context.Context, id string, arg UserUpdateRequest) error {
 	idUUID := uuid.MustParse(id)
-	pgUUID := pgtype.UUID{Bytes: idUUID, Valid: true}
 
-	record, err := s.repo.GetUser(ctx, pgUUID)
+	record, err := s.repo.GetUser(ctx, idUUID)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
 			return errors.New("user not found")
@@ -117,7 +115,7 @@ func (s *userService) Update(ctx context.Context, id string, arg UserUpdateReque
 
 	now := time.Now()
 	updatedParams := db.UpdateUserParams{
-		ID:        pgtype.UUID{Bytes: idUUID, Valid: true},
+		ID:        idUUID,
 		Name:      record.Name,
 		Email:     record.Email,
 		Password:  record.Password,
@@ -149,9 +147,8 @@ func (s *userService) Update(ctx context.Context, id string, arg UserUpdateReque
 
 func (s *userService) Delete(ctx context.Context, id string) error {
 	idUUID := uuid.MustParse(id)
-	pgUUID := pgtype.UUID{Bytes: idUUID, Valid: true}
 
-	if err := s.repo.Delete(ctx, pgUUID); err != nil {
+	if err := s.repo.Delete(ctx, idUUID); err != nil {
 		return fmt.Errorf("error on delete user: %w", err)
 	}
 
