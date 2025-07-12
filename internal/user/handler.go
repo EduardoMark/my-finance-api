@@ -1,12 +1,11 @@
 package user
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/EduardoMark/my-finance-api/internal/middlewares"
-	"github.com/EduardoMark/my-finance-api/pkg/httpResponse"
+	"github.com/EduardoMark/my-finance-api/pkg/httputils"
 	"github.com/EduardoMark/my-finance-api/pkg/token"
 	"github.com/go-chi/chi/v5"
 )
@@ -31,7 +30,7 @@ func (h *UserHandler) RegisterRoutes(r chi.Router) {
 		r.Use(middlewares.AuthMiddleware(h.token))
 
 		r.Get("/{id}", h.GetUser)
-		r.Get("/", h.GetAllUser)
+		r.Get("/", h.GetAllUsers)
 		r.Put("/{id}", h.Update)
 		r.Delete("/{id}", h.Delete)
 	})
@@ -40,40 +39,50 @@ func (h *UserHandler) RegisterRoutes(r chi.Router) {
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	var body UserLoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httpResponse.Error(w, http.StatusBadRequest, "error when decoding body:"+err.Error())
+	data, problems, err := httputils.DecodeValidJson[*UserLoginRequest](r)
+	if err != nil {
+		_ = httputils.EncodeJson(w, r, http.StatusUnprocessableEntity, problems)
 		return
 	}
 	defer r.Body.Close()
 
-	token, err := h.svc.Login(ctx, h.token, body)
+	token, err := h.svc.Login(ctx, h.token, *data)
 	if err != nil {
-		httpResponse.Error(w, http.StatusBadRequest, err.Error())
+		if errors.Is(err, ErrUserNotFound) {
+			httputils.Error(w, r, http.StatusBadRequest, map[string]string{"error": "invalid credential"})
+			return
+		}
+
+		httputils.Error(w, r, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
 	resp := UserLoginResponse{Token: token}
 
-	httpResponse.SendJSON(w, http.StatusOK, resp)
+	_ = httputils.EncodeJson(w, r, http.StatusOK, resp)
 }
 
 func (h *UserHandler) Signup(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	var body UserCreateRequest
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httpResponse.Error(w, http.StatusBadRequest, "error when decoding body:"+err.Error())
+	data, problems, err := httputils.DecodeValidJson[*UserCreateRequest](r)
+	if err != nil {
+		_ = httputils.EncodeJson(w, r, http.StatusUnprocessableEntity, problems)
 		return
 	}
 	defer r.Body.Close()
 
-	if err := h.svc.Create(ctx, body); err != nil {
-		httpResponse.Error(w, http.StatusInternalServerError, "error on create user: "+err.Error())
+	if err := h.svc.Create(ctx, *data); err != nil {
+		if errors.Is(err, ErrDuplicatedCredential) {
+			httputils.Error(w, r, http.StatusBadRequest, map[string]string{"error": "user already exist"})
+			return
+		}
+
+		httputils.Error(w, r, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	httpResponse.Created(w)
+	httputils.Created(w)
 }
 
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
@@ -83,11 +92,11 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	record, err := h.svc.GetUser(ctx, id)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			httpResponse.Error(w, http.StatusNotFound, "user not found")
+			httputils.Error(w, r, http.StatusNotFound, map[string]string{"error": "user not found"})
 			return
 		}
 
-		httpResponse.Error(w, http.StatusInternalServerError, err.Error())
+		httputils.Error(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -99,18 +108,21 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt: record.UpdatedAt,
 	}
 
-	httpResponse.SendJSON(w, http.StatusOK, response)
+	httputils.EncodeJson(w, r, http.StatusOK, response)
 }
 
-func (h *UserHandler) GetAllUser(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	records, err := h.svc.GetAllUsers(ctx)
 	if err != nil {
 		if errors.Is(err, ErrNoUsersFound) {
-			httpResponse.Error(w, http.StatusNotFound, "no users found")
+			httputils.Error(w, r, http.StatusNotFound, map[string]string{"error": "no users found"})
 			return
 		}
+
+		httputils.Error(w, r, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
 	}
 
 	response := make([]UserResponse, len(records))
@@ -124,26 +136,36 @@ func (h *UserHandler) GetAllUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	httpResponse.SendJSON(w, http.StatusOK, response)
+	httputils.EncodeJson(w, r, http.StatusOK, response)
 }
 
 func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := chi.URLParam(r, "id")
 
-	var body UserUpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httpResponse.Error(w, http.StatusBadRequest, "invalid body")
+	data, problems, err := httputils.DecodeValidJson[*UserUpdateRequest](r)
+	if err != nil {
+		_ = httputils.EncodeJson(w, r, http.StatusUnprocessableEntity, problems)
 		return
 	}
 	defer r.Body.Close()
 
-	if err := h.svc.Update(ctx, id, body); err != nil {
-		httpResponse.Error(w, http.StatusInternalServerError, "error when updating user: "+err.Error())
+	if err := h.svc.Update(ctx, id, *data); err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			httputils.Error(w, r, http.StatusNotFound, map[string]string{"error": "user not found"})
+			return
+		}
+
+		if errors.Is(err, ErrDuplicatedCredential) {
+			httputils.Error(w, r, http.StatusBadRequest, map[string]string{"error": "user already exist"})
+			return
+		}
+
+		httputils.Error(w, r, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	httpResponse.NoContent(w)
+	httputils.NoContent(w)
 }
 
 func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -151,9 +173,14 @@ func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	if err := h.svc.Delete(ctx, id); err != nil {
-		httpResponse.Error(w, http.StatusInternalServerError, err.Error())
+		if errors.Is(err, ErrUserNotFound) {
+			httputils.Error(w, r, http.StatusNotFound, map[string]string{"error": "user not found"})
+			return
+		}
+
+		httputils.Error(w, r, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	httpResponse.NoContent(w)
+	httputils.NoContent(w)
 }

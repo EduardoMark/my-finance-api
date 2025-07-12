@@ -2,17 +2,14 @@ package user
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/EduardoMark/my-finance-api/internal/store/pgstore/db"
+	"github.com/EduardoMark/my-finance-api/internal/validator"
 	"github.com/EduardoMark/my-finance-api/pkg/hash"
 	"github.com/EduardoMark/my-finance-api/pkg/token"
-	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Service interface {
@@ -33,33 +30,24 @@ func NewUserService(repo Repository) Service {
 	return &userService{repo: repo}
 }
 
-var validate = validator.New(validator.WithRequiredStructEnabled())
-
-var ErrUserNotFound = errors.New("user not found")
-var ErrNoUsersFound = errors.New("users not found")
-
 func (s *userService) Create(ctx context.Context, dto UserCreateRequest) error {
-	if err := validate.Struct(dto); err != nil {
-		return errors.New("invalid body all fields required")
-	}
-
 	password, err := hash.HashPassword(dto.Password)
 	if err != nil {
 		return err
 	}
 
-	now := time.Now()
 	user := db.CreateUserParams{
-		Name:      dto.Name,
-		Email:     dto.Email,
-		Password:  password,
-		CreatedAt: pgtype.Timestamptz{Time: now, Valid: true},
-		UpdatedAt: pgtype.Timestamptz{Time: now, Valid: true},
+		Name:     dto.Name,
+		Email:    dto.Email,
+		Password: password,
 	}
 
 	if err := s.repo.Create(ctx, user); err != nil {
-		errorMsg := fmt.Errorf("error on create user: %w", err)
-		return errors.New(errorMsg.Error())
+		if errors.Is(err, ErrDuplicatedCredential) {
+			return ErrDuplicatedCredential
+		}
+
+		return fmt.Errorf("service create: %w", err)
 	}
 
 	return nil
@@ -70,9 +58,6 @@ func (s *userService) GetUser(ctx context.Context, id string) (*db.User, error) 
 
 	record, err := s.repo.GetUser(ctx, idUUID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New(ErrUserNotFound.Error())
-		}
 		return nil, fmt.Errorf("error on search user: %w", err)
 	}
 
@@ -82,9 +67,6 @@ func (s *userService) GetUser(ctx context.Context, id string) (*db.User, error) 
 func (s *userService) GetUserByEmail(ctx context.Context, email string) (*db.User, error) {
 	record, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New(ErrUserNotFound.Error())
-		}
 		return nil, fmt.Errorf("error on search user: %w", err)
 	}
 
@@ -94,43 +76,39 @@ func (s *userService) GetUserByEmail(ctx context.Context, email string) (*db.Use
 func (s *userService) GetAllUsers(ctx context.Context) ([]*db.User, error) {
 	records, err := s.repo.GetAllUser(ctx)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New(ErrNoUsersFound.Error())
-		}
+		return nil, fmt.Errorf("error on get all users: %w", err)
 	}
 
 	return records, nil
 }
 
 func (s *userService) Update(ctx context.Context, id string, arg UserUpdateRequest) error {
-	idUUID := uuid.MustParse(id)
-
-	record, err := s.repo.GetUser(ctx, idUUID)
+	idUUID, err := uuid.Parse(id)
 	if err != nil {
-		if errors.Is(err, ErrUserNotFound) {
-			return errors.New("user not found")
-		}
 		return err
 	}
 
-	now := time.Now()
-	updatedParams := db.UpdateUserParams{
-		ID:        idUUID,
-		Name:      record.Name,
-		Email:     record.Email,
-		Password:  record.Password,
-		UpdatedAt: pgtype.Timestamptz{Time: now, Valid: true},
+	record, err := s.repo.GetUser(ctx, idUUID)
+	if err != nil {
+		return err
 	}
 
-	if arg.Name != "" {
+	updatedParams := db.UpdateUserParams{
+		ID:       idUUID,
+		Name:     record.Name,
+		Email:    record.Email,
+		Password: record.Password,
+	}
+
+	if validator.NotBlank(arg.Name) {
 		updatedParams.Name = arg.Name
 	}
 
-	if arg.Email != "" {
+	if validator.NotBlank(arg.Email) {
 		updatedParams.Email = arg.Email
 	}
 
-	if arg.Password != "" {
+	if validator.NotBlank(arg.Password) {
 		hashPassword, err := hash.HashPassword(arg.Password)
 		if err != nil {
 			return err
@@ -139,7 +117,7 @@ func (s *userService) Update(ctx context.Context, id string, arg UserUpdateReque
 	}
 
 	if err := s.repo.Update(ctx, updatedParams); err != nil {
-		return fmt.Errorf("error updating user: %w", err)
+		return err
 	}
 
 	return nil
@@ -158,8 +136,8 @@ func (s *userService) Delete(ctx context.Context, id string) error {
 func (s *userService) Login(ctx context.Context, tm *token.TokenManager, dto UserLoginRequest) (string, error) {
 	record, err := s.repo.GetUserByEmail(ctx, dto.Email)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return "", errors.New("invalid credentials")
+		if errors.Is(err, ErrUserNotFound) {
+			return "", ErrUserNotFound
 		}
 		return "", fmt.Errorf("error on search user: %w", err)
 	}

@@ -16,7 +16,7 @@ SELECT * FROM accounts WHERE user_id = $1;
 UPDATE accounts
 SET name = $2,
     type = $3,
-    updated_at = CURRENT_TIMESTAMP
+    updated_at = now()
 WHERE id = $1;
 
 -- name: DeleteAccount :exec

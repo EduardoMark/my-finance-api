@@ -9,29 +9,25 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :exec
-INSERT INTO users (name, email, password, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)
+INSERT INTO users (
+  name, 
+  email, 
+  password 
+) 
+VALUES ($1, $2, $3)
 `
 
 type CreateUserParams struct {
-	Name      string             `json:"name"`
-	Email     string             `json:"email"`
-	Password  string             `json:"password"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.Exec(ctx, createUser,
-		arg.Name,
-		arg.Email,
-		arg.Password,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
+	_, err := q.db.Exec(ctx, createUser, arg.Name, arg.Email, arg.Password)
 	return err
 }
 
@@ -112,15 +108,20 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (*User, erro
 }
 
 const updateUser = `-- name: UpdateUser :exec
-UPDATE users SET name=$2, email=$3, password=$4, updated_at=$5 WHERE id=$1
+UPDATE users
+SET 
+  name = $2, 
+  email = $3, 
+  password = $4, 
+  updated_at = now() 
+WHERE id=$1
 `
 
 type UpdateUserParams struct {
-	ID        uuid.UUID          `json:"id"`
-	Name      string             `json:"name"`
-	Email     string             `json:"email"`
-	Password  string             `json:"password"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID       uuid.UUID `json:"id"`
+	Name     string    `json:"name"`
+	Email    string    `json:"email"`
+	Password string    `json:"password"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
@@ -129,7 +130,6 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
 		arg.Name,
 		arg.Email,
 		arg.Password,
-		arg.UpdatedAt,
 	)
 	return err
 }

@@ -1,11 +1,11 @@
 package account
 
 import (
-	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/EduardoMark/my-finance-api/internal/middlewares"
-	"github.com/EduardoMark/my-finance-api/pkg/httpResponse"
+	"github.com/EduardoMark/my-finance-api/pkg/httputils"
 	"github.com/EduardoMark/my-finance-api/pkg/token"
 	"github.com/go-chi/chi/v5"
 )
@@ -29,7 +29,7 @@ func (h *AccountHandler) RegisterAccountRoutes(r chi.Router) {
 		r.Post("/", h.Create)
 		r.Get("/{id}", h.GetAccount)
 		r.Get("/", h.GetAllAccountsPerUser)
-		r.Post("/{id}", h.Update)
+		r.Put("/{id}", h.Update)
 		r.Delete("/{id}", h.Delete)
 	})
 }
@@ -38,44 +38,38 @@ func (h *AccountHandler) Create(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userID, ok := ctx.Value(middlewares.ContextUserID).(string)
 
-	if !ok {
-		httpResponse.Unauthorized(w)
+	if !ok || userID == "" {
+		httputils.Unauthorized(w)
 		return
 	}
 
-	var body AccountCreateRequest
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httpResponse.Error(w, http.StatusBadRequest, "invalid body")
+	data, problems, err := httputils.DecodeValidJson[*AccountCreateRequest](r)
+	if err != nil {
+		_ = httputils.EncodeJson(w, r, http.StatusUnprocessableEntity, problems)
+		return
+	}
+	defer r.Body.Close()
+
+	if err := h.svc.Create(ctx, userID, *data); err != nil {
+		httputils.Error(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	if err := h.svc.Create(ctx, userID, body); err != nil {
-		httpResponse.Error(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	httpResponse.Created(w)
+	httputils.Created(w)
 }
 
 func (h *AccountHandler) GetAccount(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := chi.URLParam(r, "id")
 
-	_, ok := ctx.Value(middlewares.ContextUserID).(string)
-
-	if !ok {
-		httpResponse.Unauthorized(w)
-		return
-	}
-
 	record, err := h.svc.GetAccount(ctx, id)
 	if err != nil {
-		if err == ErrAccountNotFound {
-			httpResponse.Error(w, http.StatusBadRequest, err.Error())
+		if errors.Is(err, ErrAccountNotFound) {
+			httputils.Error(w, r, http.StatusBadRequest, "account not found")
 			return
 		}
 
-		httpResponse.Error(w, http.StatusInternalServerError, err.Error())
+		httputils.Error(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -89,25 +83,26 @@ func (h *AccountHandler) GetAccount(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt: record.UpdatedAt.Time,
 	}
 
-	httpResponse.SendJSON(w, http.StatusOK, response)
+	httputils.EncodeJson(w, r, http.StatusOK, response)
 }
 
 func (h *AccountHandler) GetAllAccountsPerUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userId, ok := ctx.Value(middlewares.ContextUserID).(string)
-	if !ok {
-		httpResponse.Unauthorized(w)
+	if !ok || userId == "" {
+		httputils.Unauthorized(w)
 		return
 	}
 
 	records, err := h.svc.GetAllAccountsByUserID(ctx, userId)
 	if err != nil {
-		if err == ErrNoAccountsFound {
-			httpResponse.NotFound(w)
+		if errors.Is(err, ErrNoAccountsFound) {
+			httputils.Error(w, r, http.StatusBadRequest, "account not found")
 			return
 		}
-		httpResponse.Error(w, http.StatusInternalServerError, err.Error())
+
+		httputils.Error(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -124,40 +119,52 @@ func (h *AccountHandler) GetAllAccountsPerUser(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	httpResponse.SendJSON(w, http.StatusOK, response)
+	httputils.EncodeJson(w, r, http.StatusOK, response)
 }
 
 func (h *AccountHandler) Update(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := chi.URLParam(r, "id")
 
-	var body UpdateAccountReq
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httpResponse.Error(w, http.StatusBadRequest, "invalid body")
+	data, problems, err := httputils.DecodeValidJson[*AccountUpdateAccountReq](r)
+	if err != nil {
+		_ = httputils.EncodeJson(w, r, http.StatusUnprocessableEntity, problems)
 		return
 	}
+	defer r.Body.Close()
 
-	if err := h.svc.UpdateAccount(ctx, id, body); err != nil {
+	if err := h.svc.UpdateAccount(ctx, id, *data); err != nil {
 		if err == ErrAccountNotFound {
-			httpResponse.Error(w, http.StatusBadRequest, ErrAccountNotFound.Error())
+			httputils.Error(w, r, http.StatusBadRequest, ErrAccountNotFound.Error())
 			return
 		}
-		httpResponse.Error(w, http.StatusInternalServerError, err.Error())
+
+		httputils.Error(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	httpResponse.NoContent(w)
+	httputils.NoContent(w)
 }
 
 func (h *AccountHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	id := chi.URLParam(r, "id")
 
-	if err := h.svc.Delete(ctx, id); err != nil {
-		httpResponse.Error(w, http.StatusInternalServerError, err.Error())
+	userId, ok := ctx.Value(middlewares.ContextUserID).(string)
+	if !ok || userId == "" {
+		httputils.Unauthorized(w)
 		return
 	}
 
-	httpResponse.NoContent(w)
+	if err := h.svc.Delete(ctx, id); err != nil {
+		if errors.Is(err, ErrAccountNotFound) {
+			httputils.Error(w, r, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		httputils.Error(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	httputils.NoContent(w)
 }

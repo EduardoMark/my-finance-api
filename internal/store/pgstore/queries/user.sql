@@ -1,5 +1,10 @@
 -- name: CreateUser :exec
-INSERT INTO users (name, email, password, created_at, updated_at) VALUES ($1, $2, $3, $4, $5);
+INSERT INTO users (
+  name, 
+  email, 
+  password 
+) 
+VALUES ($1, $2, $3);
 
 -- name: GetUser :one
 SELECT * FROM users WHERE id = $1;
@@ -11,7 +16,13 @@ SELECT * FROM users WHERE email = $1;
 SELECT * FROM users;
 
 -- name: UpdateUser :exec
-UPDATE users SET name=$2, email=$3, password=$4, updated_at=$5 WHERE id=$1;
+UPDATE users
+SET 
+  name = $2, 
+  email = $3, 
+  password = $4, 
+  updated_at = now() 
+WHERE id=$1;
 
 -- name: DeleteUser :exec
 DELETE FROM users WHERE id = $1;

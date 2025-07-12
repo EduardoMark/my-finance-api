@@ -5,9 +5,54 @@
 package db
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type TransactionType string
+
+const (
+	TransactionTypeIncome  TransactionType = "income"
+	TransactionTypeExpense TransactionType = "expense"
+)
+
+func (e *TransactionType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TransactionType(s)
+	case string:
+		*e = TransactionType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TransactionType: %T", src)
+	}
+	return nil
+}
+
+type NullTransactionType struct {
+	TransactionType TransactionType `json:"transaction_type"`
+	Valid           bool            `json:"valid"` // Valid is true if TransactionType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTransactionType) Scan(value interface{}) error {
+	if value == nil {
+		ns.TransactionType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TransactionType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTransactionType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TransactionType), nil
+}
 
 type Account struct {
 	ID        uuid.UUID          `json:"id"`
@@ -15,6 +60,15 @@ type Account struct {
 	Name      string             `json:"name"`
 	Type      string             `json:"type"`
 	Balance   pgtype.Float8      `json:"balance"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Category struct {
+	ID        uuid.UUID          `json:"id"`
+	Name      string             `json:"name"`
+	Type      TransactionType    `json:"type"`
+	UserID    uuid.UUID          `json:"user_id"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }

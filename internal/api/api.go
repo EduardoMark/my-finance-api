@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/EduardoMark/my-finance-api/internal/account"
+	"github.com/EduardoMark/my-finance-api/internal/category"
 	"github.com/EduardoMark/my-finance-api/internal/store/pgstore/db"
 	"github.com/EduardoMark/my-finance-api/internal/user"
 	"github.com/EduardoMark/my-finance-api/pkg/config"
@@ -10,8 +11,9 @@ import (
 )
 
 type Handler struct {
-	User    *user.UserHandler
-	Account *account.AccountHandler
+	User     *user.UserHandler
+	Account  *account.AccountHandler
+	Category *category.CategoryHandler
 }
 
 type Api struct {
@@ -40,8 +42,13 @@ func (api *Api) SetupApi() {
 	accSvc := account.NewAccountService(accRepo)
 	accHandler := account.NewAccountHandler(accSvc, api.Token)
 
+	ctRepo := category.NewCategoryRepository(api.Db)
+	ctSvc := category.NewCategoryService(ctRepo)
+	ctHandler := category.NewCategoryHandler(ctSvc, api.Token)
+
 	api.Handler = &Handler{
-		User:    userHandler,
-		Account: &accHandler,
+		User:     userHandler,
+		Account:  &accHandler,
+		Category: &ctHandler,
 	}
 }

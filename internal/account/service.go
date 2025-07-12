@@ -2,13 +2,10 @@ package account
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/EduardoMark/my-finance-api/internal/store/pgstore/db"
 	"github.com/EduardoMark/my-finance-api/pkg/converter"
-	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
@@ -16,7 +13,7 @@ type Service interface {
 	Create(ctx context.Context, userID string, dto AccountCreateRequest) error
 	GetAccount(ctx context.Context, id string) (*db.Account, error)
 	GetAllAccountsByUserID(ctx context.Context, userID string) ([]*db.Account, error)
-	UpdateAccount(ctx context.Context, id string, args UpdateAccountReq) error
+	UpdateAccount(ctx context.Context, id string, args AccountUpdateAccountReq) error
 	Delete(ctx context.Context, id string) error
 }
 
@@ -28,17 +25,11 @@ func NewAccountService(repo Repository) Service {
 	return &accountService{repo: repo}
 }
 
-var validate = validator.New(validator.WithRequiredStructEnabled())
-
-var ErrAccountNotFound = errors.New("account not found")
-var ErrNoAccountsFound = errors.New("accounts not found")
-
 func (s *accountService) Create(ctx context.Context, userID string, dto AccountCreateRequest) error {
-	if err := validate.Struct(dto); err != nil {
-		return errors.New("invalid body the field name is required")
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return err
 	}
-
-	userUUID := uuid.MustParse(userID)
 
 	params := db.CreateAccountParams{
 		UserID: userUUID,
@@ -49,8 +40,11 @@ func (s *accountService) Create(ctx context.Context, userID string, dto AccountC
 		params.Type = dto.Type
 	}
 
-	if dto.Balance >= converter.Float64(params.Balance) {
-		params.Balance = converter.ToFloat8(dto.Balance)
+	// Define balance como 0 por padrão se não informado
+	if dto.Balance != nil {
+		params.Balance = converter.ToFloat8(*dto.Balance)
+	} else {
+		params.Balance = converter.ToFloat8(0)
 	}
 
 	if err := s.repo.Create(ctx, params); err != nil {
@@ -61,13 +55,13 @@ func (s *accountService) Create(ctx context.Context, userID string, dto AccountC
 }
 
 func (s *accountService) GetAccount(ctx context.Context, id string) (*db.Account, error) {
-	idUUID := uuid.MustParse(id)
+	idUUID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
 
 	record, err := s.repo.GetAccount(ctx, idUUID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrAccountNotFound
-		}
 		return nil, err
 	}
 
@@ -75,27 +69,27 @@ func (s *accountService) GetAccount(ctx context.Context, id string) (*db.Account
 }
 
 func (s *accountService) GetAllAccountsByUserID(ctx context.Context, userID string) ([]*db.Account, error) {
-	idUUID := uuid.MustParse(userID)
+	idUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
 
 	records, err := s.repo.GetAccountByUserID(ctx, idUUID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNoAccountsFound
-		}
 		return nil, err
 	}
 
 	return records, nil
 }
 
-func (s *accountService) UpdateAccount(ctx context.Context, id string, args UpdateAccountReq) error {
-	idUUID := uuid.MustParse(id)
+func (s *accountService) UpdateAccount(ctx context.Context, id string, args AccountUpdateAccountReq) error {
+	idUUID, err := uuid.Parse(id)
+	if err != nil {
+		return err
+	}
 
 	record, err := s.repo.GetAccount(ctx, idUUID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows); err != nil {
-			return ErrAccountNotFound
-		}
 		return err
 	}
 
@@ -121,7 +115,10 @@ func (s *accountService) UpdateAccount(ctx context.Context, id string, args Upda
 }
 
 func (s *accountService) Delete(ctx context.Context, id string) error {
-	idUUID := uuid.MustParse(id)
+	idUUID, err := uuid.Parse(id)
+	if err != nil {
+		return err
+	}
 
 	if err := s.repo.Delete(ctx, idUUID); err != nil {
 		return err
