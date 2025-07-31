@@ -73,6 +73,19 @@ type Category struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type Transaction struct {
+	ID          uuid.UUID          `json:"id"`
+	Description string             `json:"description"`
+	Amount      float64            `json:"amount"`
+	Date        pgtype.Date        `json:"date"`
+	Type        TransactionType    `json:"type"`
+	AccountID   uuid.UUID          `json:"account_id"`
+	CategoryID  uuid.UUID          `json:"category_id"`
+	UserID      uuid.UUID          `json:"user_id"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
 type User struct {
 	ID        uuid.UUID          `json:"id"`
 	Name      string             `json:"name"`

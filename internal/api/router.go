@@ -13,6 +13,7 @@ func (api *Api) BindRoutes() {
 			api.Handler.User.RegisterRoutes(r)
 			api.Handler.Account.RegisterAccountRoutes(r)
 			api.Handler.Category.RegisterCategoryRoutes(r)
+			api.Handler.Transaction.RegisterRoutes(r)
 		})
 
 	})

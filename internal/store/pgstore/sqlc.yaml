@@ -23,3 +23,15 @@ sql:
             go_type:
               import: "github.com/google/uuid"
               type: "UUID"
+          - column: "transactions.user_id"
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+          - column: "transactions.account_id"
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+          - column: "transactions.category_id"
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
